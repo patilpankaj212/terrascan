@@ -6,11 +6,13 @@ import (
 	"io"
 
 	"github.com/accurics/terrascan/pkg/policy"
+	"github.com/accurics/terrascan/pkg/results"
 	"github.com/accurics/terrascan/pkg/version"
 )
 
 const (
 	junitXMLFormat supportedFormat = "junit-xml"
+	testSuiteName                  = "TERRASCAN_POLICY_SUITE"
 )
 
 // JUnitTestSuites is a collection of JUnit test suites.
@@ -32,14 +34,15 @@ type JUnitTestSuite struct {
 
 // JUnitTestCase is a single test case with its result.
 type JUnitTestCase struct {
-	XMLName     xml.Name          `xml:"testcase"`
-	Classname   string            `xml:"classname,attr"`
-	Name        string            `xml:"name,attr"`
-	File        string            `xml:"file,attr"`
-	Severity    string            `xml:"severity,attr"`
-	Line        int               `xml:"line,attr"`
-	Category    string            `xml:"category,attr"`
-	Time        string            `xml:"time,attr"`
+	XMLName   xml.Name `xml:"testcase"`
+	Classname string   `xml:"classname,attr"`
+	Name      string   `xml:"name,attr"`
+	File      string   `xml:"file,attr"`
+	Severity  string   `xml:"severity,attr"`
+	Line      int      `xml:"line,attr"`
+	Category  string   `xml:"category,attr"`
+	// omit empty time because today we do not have this data
+	Time        string            `xml:"time,attr,omitempty"`
 	SkipMessage *JUnitSkipMessage `xml:"skipped,omitempty"`
 	Failure     *JUnitFailure     `xml:"failure,omitempty"`
 }
@@ -62,6 +65,15 @@ type JUnitFailure struct {
 	Contents string `xml:",chardata"`
 }
 
+func newJunitTestSuite(summary results.ScanSummary) JUnitTestSuite {
+	return JUnitTestSuite{Name: testSuiteName, Tests: summary.TotalPolicies, Time: fmt.Sprint(summary.TotalTime), Failures: summary.ViolatedPolicies, Properties: []JUnitProperty{
+		{
+			Name:  "Terrascan Version",
+			Value: version.Get(),
+		},
+	}}
+}
+
 func init() {
 	RegisterWriter(junitXMLFormat, JUnitXMLWriter)
 }
@@ -81,40 +93,67 @@ func JUnitXMLWriter(data interface{}, writer io.Writer) error {
 	return XMLWriter(junitXMLOutput, writer)
 }
 
+// convert is helper func to convert engine output to JUnitTestSuites
 func convert(output policy.EngineOutput) (JUnitTestSuites, error) {
-	o := JUnitTestSuites{}
-	suite := JUnitTestSuite{Name: "TERRASCAN_POLICY_SUITE", Tests: output.Summary.TotalPolicies, Time: fmt.Sprint(output.Summary.TotalTime), Failures: output.Summary.ViolatedPolicies, Properties: []JUnitProperty{
-		{
-			Name:  "Terrascan Version",
-			Value: version.Get(),
-		},
-	}}
-	for _, v := range output.ViolationStore.Violations {
-		testCase := JUnitTestCase{Failure: new(JUnitFailure)}
-		testCase.Classname = v.RuleID
-		testCase.Name = v.RuleName
+	testSuites := JUnitTestSuites{}
+	suite := newJunitTestSuite(output.Summary)
+
+	tests := violationsToTestCases(output.ViolationStore.Violations, false)
+	if tests != nil {
+		suite.TestCases = append(suite.TestCases, tests...)
+	}
+
+	skippedTests := violationsToTestCases(output.ViolationStore.SkippedViolations, true)
+	if skippedTests != nil {
+		suite.TestCases = append(suite.TestCases, skippedTests...)
+	}
+
+	testSuites.Suites = append(testSuites.Suites, suite)
+
+	return testSuites, nil
+}
+
+// violationsToTestCases is helper func to convert scan violations to JunitTestCases
+func violationsToTestCases(violations []*results.Violation, isSkipped bool) []JUnitTestCase {
+	testCases := make([]JUnitTestCase, 0)
+	for _, v := range violations {
+		var testCase JUnitTestCase
+		if isSkipped {
+			testCase = JUnitTestCase{Failure: new(JUnitFailure), SkipMessage: new(JUnitSkipMessage)}
+		} else {
+			testCase = JUnitTestCase{Failure: new(JUnitFailure)}
+		}
+		testCase.Classname = v.RuleName
+		testCase.Name = v.RuleID
 		testCase.File = v.File
 		testCase.Line = v.LineNumber
 		testCase.Severity = v.Severity
 		testCase.Category = v.Category
-		testCase.Failure.Message = detailedViolations(*v)
-		suite.TestCases = append(suite.TestCases, testCase)
+		testCase.Failure.Message = getViolationString(*v)
+		testCase.Failure.Type = v.Severity
+		if isSkipped {
+			testCase.SkipMessage.Message = v.Comment
+		}
+		testCases = append(testCases, testCase)
+	}
+	return testCases
+}
+
+func getViolationString(v results.Violation) string {
+	resourceName := v.ResourceName
+	if resourceName == "" {
+		resourceName = `""`
 	}
 
-	for _, v := range output.ViolationStore.SkippedViolations {
-		testCase := JUnitTestCase{Failure: new(JUnitFailure), SkipMessage: new(JUnitSkipMessage)}
-		testCase.Classname = v.RuleID
-		testCase.Name = v.RuleName
-		testCase.File = v.File
-		testCase.Line = v.LineNumber
-		testCase.Severity = v.Severity
-		testCase.Category = v.Category
-		testCase.Failure.Message = detailedViolations(*v)
-		testCase.SkipMessage.Message = v.Comment
-		suite.TestCases = append(suite.TestCases, testCase)
-	}
-
-	o.Suites = append(o.Suites, suite)
-
-	return o, nil
+	out := fmt.Sprintf("%s: %s, %s: %s, %s: %d, %s: %s, %s: %s, %s: %s, %s: %s, %s: %s, %s: %s",
+		"Description", v.Description,
+		"File", v.File,
+		"Line", v.LineNumber,
+		"Severity", v.Severity,
+		"Rule Name", v.RuleName,
+		"Rule ID", v.RuleID,
+		"Resource Name", resourceName,
+		"Resource Type", v.ResourceType,
+		"Category", v.Category)
+	return out
 }
