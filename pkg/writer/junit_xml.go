@@ -97,7 +97,7 @@ func convert(output policy.EngineOutput) (JUnitTestSuites, error) {
 		testCase.Line = v.LineNumber
 		testCase.Severity = v.Severity
 		testCase.Category = v.Category
-		testCase.Failure.Message = v.Description
+		testCase.Failure.Message = detailedViolations(*v)
 		suite.TestCases = append(suite.TestCases, testCase)
 	}
 
@@ -109,7 +109,7 @@ func convert(output policy.EngineOutput) (JUnitTestSuites, error) {
 		testCase.Line = v.LineNumber
 		testCase.Severity = v.Severity
 		testCase.Category = v.Category
-		testCase.Failure.Message = v.Description
+		testCase.Failure.Message = detailedViolations(*v)
 		testCase.SkipMessage.Message = v.Comment
 		suite.TestCases = append(suite.TestCases, testCase)
 	}
