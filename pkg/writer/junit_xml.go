@@ -157,7 +157,7 @@ func violationsToTestCases(violations []*results.Violation, isSkipped bool) []JU
 			testCase = JUnitTestCase{Failure: new(JUnitFailure)}
 		}
 		testCase.Classname = v.File
-		testCase.Name = "resource: " + v.ResourceName + " at line: " + fmt.Sprintf("%d", v.LineNumber) + " violates: " + v.RuleID
+		testCase.Name = "[ERROR] resource: " + fmt.Sprintf(`"%s"`, v.ResourceName) + " at line: " + fmt.Sprintf("%d", v.LineNumber) + " violates: " + v.RuleID
 		testCase.Severity = v.Severity
 		testCase.Category = v.Category
 		// since junitXML doesn't contain the attributes we want to show as violations
