@@ -59,9 +59,7 @@ type JUnitTestCase struct {
 	XMLName   xml.Name `xml:"testcase"`
 	Classname string   `xml:"classname,attr"`
 	Name      string   `xml:"name,attr"`
-	File      string   `xml:"file,attr"`
 	Severity  string   `xml:"severity,attr"`
-	Line      int      `xml:"line,attr"`
 	Category  string   `xml:"category,attr"`
 	// omit empty time because today we do not have this data
 	Time        string            `xml:"time,attr,omitempty"`
@@ -158,16 +156,13 @@ func violationsToTestCases(violations []*results.Violation, isSkipped bool) []JU
 		} else {
 			testCase = JUnitTestCase{Failure: new(JUnitFailure)}
 		}
-		testCase.Classname = v.RuleName
-		testCase.Name = v.RuleID
-		testCase.File = v.File
-		testCase.Line = v.LineNumber
+		testCase.Classname = v.File
+		testCase.Name = "resource: " + v.ResourceName + " at line: " + fmt.Sprintf("%d", v.LineNumber) + " violates: " + v.RuleID
 		testCase.Severity = v.Severity
 		testCase.Category = v.Category
 		// since junitXML doesn't contain the attributes we want to show as violations
 		// we would add details of violations in the failure message
 		testCase.Failure.Message = getViolationString(*v)
-		testCase.Failure.Type = v.Severity
 		if isSkipped {
 			testCase.SkipMessage.Message = v.Comment
 		}
