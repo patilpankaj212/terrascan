@@ -29,14 +29,14 @@ var initCmd = &cobra.Command{
 
 Initializes Terrascan and clones policies from the Terrascan GitHub repository.
 `,
-	RunE:          initialInit,
+	RunE:          initial,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 }
 
-func initialInit(cmd *cobra.Command, args []string) error {
+func initial(cmd *cobra.Command, args []string) error {
 	// initialize terrascan
-	if err := initialize.Run(false); err != nil {
+	if err := initialize.Run(); err != nil {
 		zap.S().Error("failed to initialize terrascan")
 		return err
 	}

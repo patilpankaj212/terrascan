@@ -19,6 +19,7 @@ package initialize
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/accurics/terrascan/pkg/config"
 	"go.uber.org/zap"
@@ -35,21 +36,17 @@ var (
 )
 
 // Run initializes terrascan if not done already
-func Run(isScanCmd bool) error {
+func Run() error {
 
 	zap.S().Debug("initializing terrascan")
 
 	// check if policy paths exist
 	if path, err := os.Stat(basePolicyPath); err == nil && path.IsDir() {
-		if isScanCmd {
-			return nil
-		}
-		if err := os.RemoveAll(basePath); err != nil {
-			return err
-		}
+		return refreshPolicies()
 	}
 
 	// download policies
+	os.RemoveAll(basePath)
 	if err := DownloadPolicies(); err != nil {
 		return err
 	}
@@ -66,23 +63,87 @@ func DownloadPolicies() error {
 		URL: repoURL,
 	})
 	if err != nil {
-		zap.S().Errorf("failed to download policies. error: '%v'", err)
-		return err
-	}
-
-	// create working tree
-	w, err := r.Worktree()
-	if err != nil {
-		zap.S().Errorf("failed to create working tree. error: '%v'", err)
+		zap.S().Errorf("failed to clone repository %s. error: '%v'", repoURL, err)
 		return err
 	}
 
 	// fetch references
-	err = r.Fetch(&git.FetchOptions{
+	err = fetch(r)
+	if err != nil {
+		zap.S().Errorf("failed to fetch, fetchURL: %s. error: '%v'", repoURL, err)
+		return err
+	}
+
+	// checkout policies branch
+	err = checkout(r)
+	if err != nil {
+		zap.S().Errorf("failed to checkout to branch: %s. error: '%v'", branch, err)
+		return err
+	}
+
+	return nil
+}
+
+// this function will either pull or cal download policies
+func refreshPolicies() error {
+	r, err := git.PlainOpen(basePath)
+	if err != nil {
+		return err
+	}
+
+	remote, err := r.Remote("origin")
+	if err != nil {
+		return err
+	}
+	remoteConfig := remote.Config()
+	if err := remoteConfig.Validate(); err != nil {
+		return err
+	}
+
+	// size of the urls cannot be empty as it is validted above
+	if strings.EqualFold(remoteConfig.URLs[0], repoURL) {
+		_, err := r.Branch(branch)
+		if err != nil {
+			// branch does not exist
+			if err := fetch(r); err != nil {
+				return err
+			}
+			if err := checkout(r); err != nil {
+				return err
+			}
+		}
+		// branch exists, pull from remote repository
+		if err := pull(r); err != nil {
+			return err
+		}
+
+	} else {
+		// repoURL is not same as remote origin fetch url
+		// delete the basePath and download policies
+		os.RemoveAll(basePath)
+		return DownloadPolicies()
+	}
+
+	return nil
+}
+
+func fetch(r *git.Repository) error {
+	// fetch references
+	err := r.Fetch(&git.FetchOptions{
 		RefSpecs: []gitConfig.RefSpec{"refs/*:refs/*", "HEAD:refs/heads/HEAD"},
 	})
 	if err != nil {
 		zap.S().Errorf("failed to fetch references from repo. error: '%v'", err)
+		return err
+	}
+	return nil
+}
+
+func checkout(r *git.Repository) error {
+	// get the work tree
+	w, err := r.Worktree()
+	if err != nil {
+		zap.S().Errorf("failed to create working tree. error: '%v'", err)
 		return err
 	}
 
@@ -95,6 +156,26 @@ func DownloadPolicies() error {
 		zap.S().Errorf("failed to checkout branch '%v'. error: '%v'", branch, err)
 		return err
 	}
+	return nil
+}
 
+func pull(r *git.Repository) error {
+	// create working tree
+	w, err := r.Worktree()
+	if err != nil {
+		zap.S().Errorf("failed to create working tree. error: '%v'", err)
+		return err
+	}
+	err = w.Pull(&git.PullOptions{
+		RemoteName: "origin",
+	})
+	if err != nil {
+		if strings.EqualFold(err.Error(), git.NoErrAlreadyUpToDate.Error()) {
+			// repo is up to date
+			zap.S().Info("repository is already up to date")
+			return nil
+		}
+		return err
+	}
 	return nil
 }
