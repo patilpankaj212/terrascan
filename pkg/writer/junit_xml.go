@@ -1,3 +1,19 @@
+/*
+    Copyright (C) 2020 Accurics, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+		http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
 package writer
 
 import (
@@ -13,6 +29,7 @@ import (
 const (
 	junitXMLFormat supportedFormat = "junit-xml"
 	testSuiteName                  = "TERRASCAN_POLICY_SUITE"
+	testSuitesName                 = "TERRASCAN_POLICY_SUITES"
 )
 
 // JUnitTestSuites is a collection of JUnit test suites.
@@ -73,7 +90,7 @@ type JUnitFailure struct {
 func newJunitTestSuites(summary results.ScanSummary) JUnitTestSuites {
 	return JUnitTestSuites{
 		Tests:    summary.TotalPolicies,
-		Name:     testSuiteName,
+		Name:     testSuitesName,
 		Failures: summary.ViolatedPolicies,
 		Time:     fmt.Sprint(summary.TotalTime),
 	}
@@ -105,16 +122,13 @@ func JUnitXMLWriter(data interface{}, writer io.Writer) error {
 		return fmt.Errorf("incorrect input for JunitXML writer, supportted type is policy.EngineOutput")
 	}
 
-	junitXMLOutput, err := convert(output)
-	if err != nil {
-		return err
-	}
+	junitXMLOutput := convert(output)
 
 	return XMLWriter(junitXMLOutput, writer)
 }
 
 // convert is helper func to convert engine output to JUnitTestSuites
-func convert(output policy.EngineOutput) (JUnitTestSuites, error) {
+func convert(output policy.EngineOutput) JUnitTestSuites {
 	testSuites := newJunitTestSuites(output.Summary)
 	// since we have a single suite for now, a suite will have same data as in root level element testsuites
 	suite := newJunitTestSuite(output.Summary)
@@ -131,7 +145,7 @@ func convert(output policy.EngineOutput) (JUnitTestSuites, error) {
 
 	testSuites.Suites = append(testSuites.Suites, suite)
 
-	return testSuites, nil
+	return testSuites
 }
 
 // violationsToTestCases is helper func to convert scan violations to JunitTestCases
