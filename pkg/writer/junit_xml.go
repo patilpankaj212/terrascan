@@ -17,8 +17,12 @@ const (
 
 // JUnitTestSuites is a collection of JUnit test suites.
 type JUnitTestSuites struct {
-	XMLName xml.Name `xml:"testsuites"`
-	Suites  []JUnitTestSuite
+	XMLName  xml.Name `xml:"testsuites"`
+	Tests    int      `xml:"tests,attr"`
+	Name     string   `xml:"name,attr"`
+	Failures int      `xml:"failures,attr"`
+	Time     string   `xml:"time,attr"`
+	Suites   []JUnitTestSuite
 }
 
 // JUnitTestSuite is a single JUnit test suite which may contain many testcases.
@@ -28,6 +32,7 @@ type JUnitTestSuite struct {
 	Failures   int             `xml:"failures,attr"`
 	Time       string          `xml:"time,attr"`
 	Name       string          `xml:"name,attr"`
+	Package    string          `xml:"package,attr"`
 	Properties []JUnitProperty `xml:"properties>property,omitempty"`
 	TestCases  []JUnitTestCase
 }
@@ -65,13 +70,28 @@ type JUnitFailure struct {
 	Contents string `xml:",chardata"`
 }
 
+func newJunitTestSuites(summary results.ScanSummary) JUnitTestSuites {
+	return JUnitTestSuites{
+		Tests:    summary.TotalPolicies,
+		Name:     testSuiteName,
+		Failures: summary.ViolatedPolicies,
+		Time:     fmt.Sprint(summary.TotalTime),
+	}
+}
+
 func newJunitTestSuite(summary results.ScanSummary) JUnitTestSuite {
-	return JUnitTestSuite{Name: testSuiteName, Tests: summary.TotalPolicies, Time: fmt.Sprint(summary.TotalTime), Failures: summary.ViolatedPolicies, Properties: []JUnitProperty{
-		{
-			Name:  "Terrascan Version",
-			Value: version.Get(),
-		},
-	}}
+	return JUnitTestSuite{
+		Name:     testSuiteName,
+		Tests:    summary.TotalPolicies,
+		Time:     fmt.Sprint(summary.TotalTime),
+		Failures: summary.ViolatedPolicies,
+		Package:  summary.ResourcePath,
+		Properties: []JUnitProperty{
+			{
+				Name:  "Terrascan Version",
+				Value: version.Get(),
+			},
+		}}
 }
 
 func init() {
@@ -95,7 +115,8 @@ func JUnitXMLWriter(data interface{}, writer io.Writer) error {
 
 // convert is helper func to convert engine output to JUnitTestSuites
 func convert(output policy.EngineOutput) (JUnitTestSuites, error) {
-	testSuites := JUnitTestSuites{}
+	testSuites := newJunitTestSuites(output.Summary)
+	// since we have a single suite for now, a suite will have same data as in root level element testsuites
 	suite := newJunitTestSuite(output.Summary)
 
 	tests := violationsToTestCases(output.ViolationStore.Violations, false)
@@ -129,6 +150,8 @@ func violationsToTestCases(violations []*results.Violation, isSkipped bool) []JU
 		testCase.Line = v.LineNumber
 		testCase.Severity = v.Severity
 		testCase.Category = v.Category
+		// since junitXML doesn't contain the attributes we want to show as violations
+		// we would add details of violations in the failure message
 		testCase.Failure.Message = getViolationString(*v)
 		testCase.Failure.Type = v.Severity
 		if isSkipped {
@@ -139,6 +162,7 @@ func violationsToTestCases(violations []*results.Violation, isSkipped bool) []JU
 	return testCases
 }
 
+// getViolationString is used to get violation details as string
 func getViolationString(v results.Violation) string {
 	resourceName := v.ResourceName
 	if resourceName == "" {
