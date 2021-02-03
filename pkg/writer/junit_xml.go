@@ -28,8 +28,8 @@ import (
 
 const (
 	junitXMLFormat supportedFormat = "junit-xml"
-	testSuiteName                  = "TERRASCAN_POLICY_SUITE"
-	testSuitesName                 = "TERRASCAN_POLICY_SUITES"
+	testSuiteName  string          = "TERRASCAN_POLICY_SUITE"
+	testSuitesName string          = "TERRASCAN_POLICY_SUITES"
 )
 
 // JUnitTestSuites is a collection of JUnit test suites.
