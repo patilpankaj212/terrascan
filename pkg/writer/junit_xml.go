@@ -47,7 +47,7 @@ type JUnitTestSuite struct {
 	XMLName    xml.Name        `xml:"testsuite"`
 	Tests      int             `xml:"tests,attr"`
 	Failures   int             `xml:"failures,attr"`
-	Time       int             `xml:"time,attr"`
+	Time       string          `xml:"time,attr"`
 	Name       string          `xml:"name,attr"`
 	Package    string          `xml:"package,attr"`
 	Properties []JUnitProperty `xml:"properties>property,omitempty"`
@@ -98,7 +98,7 @@ func newJunitTestSuite(summary results.ScanSummary) JUnitTestSuite {
 	return JUnitTestSuite{
 		Name:     testSuiteName,
 		Tests:    summary.TotalPolicies,
-		Time:     int(summary.TotalTime),
+		Time:     fmt.Sprintf("%d %s", summary.TotalTime, "seconds"),
 		Failures: summary.ViolatedPolicies,
 		Package:  summary.ResourcePath,
 		Properties: []JUnitProperty{
