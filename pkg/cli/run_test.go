@@ -53,13 +53,14 @@ func shutdown() {
 	// cleanup the loaded config values
 }
 
+var testDirPath = filepath.Join("testdata", "run-test")
+
 func TestRun(t *testing.T) {
 	// disable terraform logs when TF_LOG env variable is not set
 	if os.Getenv("TF_LOG") == "" {
 		log.SetOutput(ioutil.Discard)
 	}
 
-	testDirPath := "testdata/run-test"
 	kustomizeTestDirPath := filepath.Join(testDirPath, "kustomize-test")
 	testTerraformFilePath := filepath.Join(testDirPath, "config-only.tf")
 	testRemoteModuleFilePath := filepath.Join(testDirPath, "remote-modules.tf")
@@ -191,7 +192,7 @@ func TestRun(t *testing.T) {
 				policyType: []string{"all"},
 				iacDirPath: testDirPath,
 				outputType: "yaml",
-				configFile: "testdata/configFile.toml",
+				configFile: filepath.Join("testdata", "configFile.toml"),
 			},
 		},
 		{
@@ -200,7 +201,7 @@ func TestRun(t *testing.T) {
 				policyType:  []string{"all"},
 				iacFilePath: testRemoteModuleFilePath,
 				outputType:  "human",
-				configFile:  "testdata/configFile.toml",
+				configFile:  filepath.Join("testdata", "configFile.toml"),
 			},
 		},
 		{
@@ -513,7 +514,7 @@ func TestScanOptionsScan(t *testing.T) {
 			name: "failure in run",
 			fields: fields{
 				policyType: []string{"terraform"},
-				iacDirPath: "testdata/run-test",
+				iacDirPath: testDirPath,
 			},
 			wantErr: true,
 		},
@@ -521,7 +522,7 @@ func TestScanOptionsScan(t *testing.T) {
 			name: "successful scan",
 			fields: fields{
 				policyType: []string{"all"},
-				iacDirPath: "testdata/run-test",
+				iacDirPath: testDirPath,
 				outputType: "json",
 			},
 		},
