@@ -19,17 +19,15 @@ package utils
 import (
 	"bytes"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
-)
-
-const (
-	validJSONFile = "./testdata/valid.json"
 )
 
 var (
 	validJSON      []byte
 	validJSONInput = map[string]int{"apple": 5, "lettuce": 7}
+	validJSONFile  = filepath.Join(testDataDir, "valid.json")
 )
 
 func init() {
