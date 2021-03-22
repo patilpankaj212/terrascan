@@ -21,21 +21,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/accurics/terrascan/pkg/iac-providers/output"
 )
 
+var testDataDir = "testdata"
+var emptyTfFilePath = filepath.Join(testDataDir, "empty.tf")
+
 func TestLoadIacFile(t *testing.T) {
 
 	testErrorString1 := `error occured while loading config file 'not-there'. error:
 <nil>: Failed to read file; The file "not-there" could not be read.
 `
-	testErrorString2 := `failed to load config file './testdata/empty.tf'. error:
-./testdata/empty.tf:1,21-2,1: Invalid block definition; A block definition must have block content delimited by "{" and "}", starting on the same line as the block header.
-./testdata/empty.tf:1,1-5: Unsupported block type; Blocks of type "some" are not expected here.
-`
+
+	testErrorString2 := fmt.Sprintf(`failed to load config file '%s'. error:
+%s:1,21-2,1: Invalid block definition; A block definition must have block content delimited by "{" and "}", starting on the same line as the block header.
+%s:1,1-5: Unsupported block type; Blocks of type "some" are not expected here.
+`, emptyTfFilePath, emptyTfFilePath, emptyTfFilePath)
 
 	table := []struct {
 		name     string
@@ -52,33 +57,33 @@ func TestLoadIacFile(t *testing.T) {
 		},
 		{
 			name:     "empty config",
-			filePath: "./testdata/testfile",
+			filePath: filepath.Join(testDataDir, "testfile"),
 			tfv14:    TfV14{},
 		},
 		{
 			name:     "invalid config",
-			filePath: "./testdata/empty.tf",
+			filePath: filepath.Join(testDataDir, "empty.tf"),
 			tfv14:    TfV14{},
 			wantErr:  fmt.Errorf(testErrorString2),
 		},
 		{
 			name:     "depends_on",
-			filePath: "./testdata/depends_on/main.tf",
+			filePath: filepath.Join(testDataDir, "depends_on", "main.tf"),
 			tfv14:    TfV14{},
 		},
 		{
 			name:     "count",
-			filePath: "./testdata/count/main.tf",
+			filePath: filepath.Join(testDataDir, "count", "main.tf"),
 			tfv14:    TfV14{},
 		},
 		{
 			name:     "for_each",
-			filePath: "./testdata/for_each/main.tf",
+			filePath: filepath.Join(testDataDir, "for_each", "main.tf"),
 			tfv14:    TfV14{},
 		},
 		{
 			name:     "required_providers",
-			filePath: "./testdata/required-providers/main.tf",
+			filePath: filepath.Join(testDataDir, "required-providers", "main.tf"),
 			tfv14:    TfV14{},
 		},
 	}
@@ -101,15 +106,15 @@ func TestLoadIacFile(t *testing.T) {
 	}{
 		{
 			name:         "config1",
-			tfConfigFile: "./testdata/tfconfigs/config1.tf",
-			tfJSONFile:   "./testdata/tfjson/config1.json",
+			tfConfigFile: filepath.Join(testDataDir, "tfconfigs", "config1.tf"),
+			tfJSONFile:   filepath.Join(testDataDir, "tfjson", "config1.json"),
 			tfv14:        TfV14{},
 			wantErr:      nil,
 		},
 		{
 			name:         "dummyconfig",
-			tfConfigFile: "./testdata/dummyconfig/dummyconfig.tf",
-			tfJSONFile:   "./testdata/tfjson/dummyconfig.json",
+			tfConfigFile: filepath.Join(testDataDir, "dummyconfig", "dummyconfig.tf"),
+			tfJSONFile:   filepath.Join(testDataDir, "tfjson", "dummyconfig.json"),
 			tfv14:        TfV14{},
 			wantErr:      nil,
 		},
