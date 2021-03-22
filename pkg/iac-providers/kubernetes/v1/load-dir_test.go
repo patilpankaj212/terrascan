@@ -19,6 +19,7 @@ package k8sv1
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"syscall"
 	"testing"
@@ -37,13 +38,13 @@ func TestLoadIacDir(t *testing.T) {
 	}{
 		{
 			name:    "empty config",
-			dirPath: "./testdata/testfile",
+			dirPath: filepath.Join(testDataDir, "testfile"),
 			k8sV1:   K8sV1{},
-			wantErr: fmt.Errorf("no directories found for path ./testdata/testfile"),
+			wantErr: fmt.Errorf("no directories found for path %s", filepath.Join(testDataDir, "testfile")),
 		},
 		{
 			name:    "load invalid config dir",
-			dirPath: "./testdata",
+			dirPath: testDataDir,
 			k8sV1:   K8sV1{},
 			wantErr: nil,
 		},
@@ -55,25 +56,25 @@ func TestLoadIacDir(t *testing.T) {
 		},
 		{
 			name:    "yaml with multiple documents",
-			dirPath: "./testdata/yaml-with-multiple-documents",
+			dirPath: filepath.Join(testDataDir, "yaml-with-multiple-documents"),
 			k8sV1:   K8sV1{},
 			wantErr: nil,
 		},
 		{
 			name:    "pod with the yml extension",
-			dirPath: "./testdata/yaml-extension2",
+			dirPath: filepath.Join(testDataDir, "yaml-extension2"),
 			k8sV1:   K8sV1{},
 			wantErr: nil,
 		},
 		{
 			name:    "yaml with no kind",
-			dirPath: "./testdata/yaml-extension2",
+			dirPath: filepath.Join(testDataDir, "yaml-extension2"),
 			k8sV1:   K8sV1{},
 			wantErr: nil,
 		},
 		{
 			name:    "pod with the json extension",
-			dirPath: "./testdata/json-extension",
+			dirPath: filepath.Join(testDataDir, "json-extension"),
 			k8sV1:   K8sV1{},
 			wantErr: nil,
 		},

@@ -19,6 +19,7 @@ package helmv3
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"syscall"
 	"testing"
@@ -27,6 +28,8 @@ import (
 
 	"github.com/accurics/terrascan/pkg/iac-providers/output"
 )
+
+var testDataDir = "testdata"
 
 func TestLoadIacDir(t *testing.T) {
 
@@ -40,28 +43,28 @@ func TestLoadIacDir(t *testing.T) {
 	}{
 		{
 			name:          "happy path (credit to madhuakula/kubernetes-goat)",
-			dirPath:       "./testdata/happy-path",
+			dirPath:       filepath.Join(testDataDir, "happy-path"),
 			helmv3:        HelmV3{},
 			resourceCount: 3,
 		},
 		{
 			name:          "happy path with subchart (credit to madhuakula/kubernetes-goat)",
-			dirPath:       "./testdata/happy-path-with-subchart",
+			dirPath:       filepath.Join(testDataDir, "happy-path-with-subchart"),
 			helmv3:        HelmV3{},
 			resourceCount: 5,
 		},
 		{
 			name:          "bad directory",
-			dirPath:       "./testdata/bad-dir",
+			dirPath:       filepath.Join(testDataDir, "bad-dir"),
 			helmv3:        HelmV3{},
-			wantErr:       &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: "./testdata/bad-dir"},
+			wantErr:       &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: filepath.Join(testDataDir, "bad-dir")},
 			resourceCount: 0,
 		},
 		{
 			name:          "no helm charts in directory",
-			dirPath:       "./testdata/no-helm-charts",
+			dirPath:       filepath.Join(testDataDir, "no-helm-charts"),
 			helmv3:        HelmV3{},
-			wantErr:       fmt.Errorf("no helm charts found in directory ./testdata/no-helm-charts"),
+			wantErr:       fmt.Errorf("no helm charts found in directory %s", filepath.Join(testDataDir, "no-helm-charts")),
 			resourceCount: 0,
 		},
 	}
@@ -93,45 +96,45 @@ func TestLoadChart(t *testing.T) {
 	}{
 		{
 			name:      "happy path (credit to madhuakula/kubernetes-goat)",
-			chartPath: "./testdata/happy-path/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "happy-path", "Chart.yaml"),
 			helmv3:    HelmV3{},
 			wantErr:   nil,
 		},
 		{
 			name:      "unreadable chart file",
-			chartPath: "./testdata/bad-chart-file",
+			chartPath: filepath.Join(testDataDir, "bad-chart-file"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: "./testdata/bad-chart-file"},
+			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "bad-chart-file")},
 		},
 		{
 			name:      "unmarshal bad chart",
-			chartPath: "./testdata/bad-chart-file/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "bad-chart-file", "Chart.yaml"),
 			helmv3:    HelmV3{},
 			wantErr:   &yaml.TypeError{Errors: []string{"line 1: cannot unmarshal !!str `:bad ba...` into helmv3.helmChartData"}},
 		},
 		{
 			name:      "chart path with no values.yaml",
-			chartPath: "./testdata/chart-no-values/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-no-values", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.ENOENT, Op: "stat", Path: "testdata/chart-no-values/values.yaml"},
+			wantErr:   &os.PathError{Err: syscall.ENOENT, Op: "stat", Path: filepath.Join(testDataDir, "chart-no-values", "values.yaml")},
 		},
 		{
 			name:      "chart path with unreadable values.yaml",
-			chartPath: "./testdata/chart-unreadable-values/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-unreadable-values", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: "testdata/chart-unreadable-values/values.yaml"},
+			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "chart-unreadable-values", "values.yaml")},
 		},
 		{
 			name:      "chart path with unreadable values.yaml",
-			chartPath: "./testdata/chart-bad-values/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-bad-values", "Chart.yaml"),
 			helmv3:    HelmV3{},
 			wantErr:   &yaml.TypeError{Errors: []string{"line 1: cannot unmarshal !!str `:bad <bad` into map[string]interface {}"}},
 		},
 		{
 			name:      "chart path no template dir",
-			chartPath: "./testdata/chart-no-template-dir/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-no-template-dir", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: "testdata/chart-no-template-dir/templates"},
+			wantErr:   &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: filepath.Join(testDataDir, "chart-no-template-dir", "templates")},
 		},
 		//{
 		//	name:      "chart path skip test dir",
@@ -141,25 +144,25 @@ func TestLoadChart(t *testing.T) {
 		//},
 		{
 			name:      "chart path bad template file",
-			chartPath: "./testdata/chart-bad-template-file/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-bad-template-file", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: "testdata/chart-bad-template-file/templates/service.yaml"},
+			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "chart-bad-template-file", "templates", "service.yaml")},
 		},
 		{
 			name:      "chart path bad chart name",
-			chartPath: "./testdata/chart-bad-name/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-bad-name", "Chart.yaml"),
 			helmv3:    HelmV3{},
 			wantErr:   errBadChartName,
 		},
 		{
 			name:      "chart path bad chart version",
-			chartPath: "./testdata/chart-bad-version/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-bad-version", "Chart.yaml"),
 			helmv3:    HelmV3{},
 			wantErr:   errBadChartVersion,
 		},
 		{
 			name:      "chart path rendering error",
-			chartPath: "./testdata/chart-rendering-error/Chart.yaml",
+			chartPath: filepath.Join(testDataDir, "chart-rendering-error", "Chart.yaml"),
 			helmv3:    HelmV3{},
 			wantErr:   fmt.Errorf("parse error at (metadata-db/templates/ingress.yaml:40): unexpected {{end}}"),
 		},
