@@ -58,6 +58,9 @@ func TestPrintJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &bytes.Buffer{}
 			PrintJSON(tt.input, got)
+			if IsWindowsPlatform() {
+				tt.want = ReplaceCarriageReturnString(tt.want)
+			}
 			if strings.TrimSpace(got.String()) != strings.TrimSpace(tt.want) {
 				t.Errorf("got:\n'%v'\n, want:\n'%v'\n", got, tt.want)
 			}
