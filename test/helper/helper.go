@@ -31,6 +31,7 @@ import (
 
 	"github.com/accurics/terrascan/pkg/policy"
 	"github.com/accurics/terrascan/pkg/results"
+	"github.com/accurics/terrascan/pkg/utils"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -84,6 +85,9 @@ func ValidateDirectoryExists(path string) {
 // CompareActualWithGolden compares actual string with contents of golden file path passed as parameter
 func CompareActualWithGolden(session *gexec.Session, goldenFileAbsPath string, isStdOut bool) {
 	sessionBytes, fileBytes := GetByteData(session, goldenFileAbsPath, isStdOut)
+	if utils.IsWindowsPlatform() {
+		fileBytes = utils.ReplaceCarriageReturnBytes(fileBytes)
+	}
 	gomega.Expect(string(sessionBytes)).Should(gomega.Equal(string(fileBytes)))
 }
 
