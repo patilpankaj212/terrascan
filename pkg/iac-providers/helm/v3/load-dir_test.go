@@ -27,11 +27,17 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/accurics/terrascan/pkg/iac-providers/output"
+	"github.com/accurics/terrascan/pkg/utils"
 )
 
 var testDataDir = "testdata"
 
 func TestLoadIacDir(t *testing.T) {
+
+	invalidDirErr := &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: filepath.Join(testDataDir, "bad-dir")}
+	if utils.IsWindowsPlatform() {
+		invalidDirErr = &os.PathError{Err: syscall.ENOENT, Op: "CreateFile", Path: filepath.Join(testDataDir, "bad-dir")}
+	}
 
 	table := []struct {
 		name          string
@@ -57,7 +63,7 @@ func TestLoadIacDir(t *testing.T) {
 			name:          "bad directory",
 			dirPath:       filepath.Join(testDataDir, "bad-dir"),
 			helmv3:        HelmV3{},
-			wantErr:       &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: filepath.Join(testDataDir, "bad-dir")},
+			wantErr:       invalidDirErr,
 			resourceCount: 0,
 		},
 		{
@@ -87,6 +93,31 @@ func TestLoadIacDir(t *testing.T) {
 
 func TestLoadChart(t *testing.T) {
 
+	chartPathNoValuesYAMLErr := &os.PathError{Err: syscall.ENOENT, Op: "stat", Path: filepath.Join(testDataDir, "chart-no-values", "values.yaml")}
+	if utils.IsWindowsPlatform() {
+		chartPathNoValuesYAMLErr = &os.PathError{Err: syscall.ENOENT, Op: "CreateFile", Path: filepath.Join(testDataDir, "chart-no-values", "values.yaml")}
+	}
+
+	chartPathNoTemplateDirErr := &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: filepath.Join(testDataDir, "chart-no-template-dir", "templates")}
+	if utils.IsWindowsPlatform() {
+		chartPathNoTemplateDirErr = &os.PathError{Err: syscall.ENOENT, Op: "CreateFile", Path: filepath.Join(testDataDir, "chart-no-template-dir", "templates")}
+	}
+
+	unreadableChartFileErr := &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "bad-chart-file")}
+	if utils.IsWindowsPlatform() {
+		unreadableChartFileErr = &os.PathError{Err: syscall.Errno(6), Op: "read", Path: filepath.Join(testDataDir, "bad-chart-file")}
+	}
+
+	chartPathUnreadableValuesErr := &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "chart-unreadable-values", "values.yaml")}
+	if utils.IsWindowsPlatform() {
+		chartPathUnreadableValuesErr = &os.PathError{Err: syscall.Errno(6), Op: "read", Path: filepath.Join(testDataDir, "chart-unreadable-values", "values.yaml")}
+	}
+
+	chartPathBadTemplateErr := &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "chart-bad-template-file", "templates", "service.yaml")}
+	if utils.IsWindowsPlatform() {
+		chartPathBadTemplateErr = &os.PathError{Err: syscall.Errno(6), Op: "read", Path: filepath.Join(testDataDir, "chart-bad-template-file", "templates", "service.yaml")}
+	}
+
 	table := []struct {
 		name      string
 		chartPath string
@@ -104,7 +135,7 @@ func TestLoadChart(t *testing.T) {
 			name:      "unreadable chart file",
 			chartPath: filepath.Join(testDataDir, "bad-chart-file"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "bad-chart-file")},
+			wantErr:   unreadableChartFileErr,
 		},
 		{
 			name:      "unmarshal bad chart",
@@ -116,13 +147,13 @@ func TestLoadChart(t *testing.T) {
 			name:      "chart path with no values.yaml",
 			chartPath: filepath.Join(testDataDir, "chart-no-values", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.ENOENT, Op: "stat", Path: filepath.Join(testDataDir, "chart-no-values", "values.yaml")},
+			wantErr:   chartPathNoValuesYAMLErr,
 		},
 		{
 			name:      "chart path with unreadable values.yaml",
 			chartPath: filepath.Join(testDataDir, "chart-unreadable-values", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "chart-unreadable-values", "values.yaml")},
+			wantErr:   chartPathUnreadableValuesErr,
 		},
 		{
 			name:      "chart path with unreadable values.yaml",
@@ -134,7 +165,7 @@ func TestLoadChart(t *testing.T) {
 			name:      "chart path no template dir",
 			chartPath: filepath.Join(testDataDir, "chart-no-template-dir", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: filepath.Join(testDataDir, "chart-no-template-dir", "templates")},
+			wantErr:   chartPathNoTemplateDirErr,
 		},
 		//{
 		//	name:      "chart path skip test dir",
@@ -146,7 +177,7 @@ func TestLoadChart(t *testing.T) {
 			name:      "chart path bad template file",
 			chartPath: filepath.Join(testDataDir, "chart-bad-template-file", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   &os.PathError{Err: syscall.EISDIR, Op: "read", Path: filepath.Join(testDataDir, "chart-bad-template-file", "templates", "service.yaml")},
+			wantErr:   chartPathBadTemplateErr,
 		},
 		{
 			name:      "chart path bad chart name",
