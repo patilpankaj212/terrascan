@@ -19,6 +19,7 @@ package helmv3
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"syscall"
@@ -195,7 +196,7 @@ func TestLoadChart(t *testing.T) {
 			name:      "chart path rendering error",
 			chartPath: filepath.Join(testDataDir, "chart-rendering-error", "Chart.yaml"),
 			helmv3:    HelmV3{},
-			wantErr:   fmt.Errorf("parse error at (metadata-db/templates/ingress.yaml:40): unexpected {{end}}"),
+			wantErr:   fmt.Errorf("parse error at (%s:40): unexpected {{end}}", path.Join("metadata-db", filepath.Join("templates", "ingress.yaml"))),
 		},
 	}
 
