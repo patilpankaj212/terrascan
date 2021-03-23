@@ -25,9 +25,15 @@ import (
 	"testing"
 
 	"github.com/accurics/terrascan/pkg/iac-providers/output"
+	"github.com/accurics/terrascan/pkg/utils"
 )
 
 func TestLoadIacDir(t *testing.T) {
+
+	invalidDirErr := &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: "not-there"}
+	if utils.IsWindowsPlatform() {
+		invalidDirErr = &os.PathError{Err: syscall.ENOENT, Op: "CreateFile", Path: "not-there"}
+	}
 
 	table := []struct {
 		name    string
@@ -52,7 +58,7 @@ func TestLoadIacDir(t *testing.T) {
 			name:    "invalid dirPath",
 			dirPath: "not-there",
 			k8sV1:   K8sV1{},
-			wantErr: &os.PathError{Err: syscall.ENOENT, Op: "lstat", Path: "not-there"},
+			wantErr: invalidDirErr,
 		},
 		{
 			name:    "yaml with multiple documents",
