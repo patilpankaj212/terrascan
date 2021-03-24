@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/accurics/terrascan/pkg/iac-providers/output"
+	"github.com/accurics/terrascan/pkg/utils"
 )
 
 var testDataDir = "testdata"
@@ -130,6 +131,12 @@ func TestLoadIacFile(t *testing.T) {
 			gotBytes, _ := json.MarshalIndent(got, "", "  ")
 			gotBytes = append(gotBytes, []byte{'\n'}...)
 			wantBytes, _ := ioutil.ReadFile(tt.tfJSONFile)
+
+			if utils.IsWindowsPlatform() {
+				gotBytes = utils.ReplaceCarriageReturnBytes(gotBytes)
+				wantBytes = utils.ReplaceWinNewLineBytes(wantBytes)
+			}
+
 			if !reflect.DeepEqual(bytes.TrimSpace(gotBytes), bytes.TrimSpace(wantBytes)) {
 				t.Errorf("unexpected error; got '%v', want: '%v'", string(gotBytes), string(wantBytes))
 			}

@@ -94,7 +94,7 @@ func TestLoadIacFile(t *testing.T) {
 		gotBytes = append(gotBytes, []byte{'\n'}...)
 		wantBytes, _ := ioutil.ReadFile(tfplanOutput)
 		if utils.IsWindowsPlatform() {
-			wantBytes = utils.ReplaceCarriageReturnBytes(wantBytes)
+			wantBytes = utils.ReplaceWinNewLineBytes(wantBytes)
 		}
 		if !reflect.DeepEqual(bytes.TrimSpace(gotBytes), bytes.TrimSpace(wantBytes)) {
 			t.Errorf("unexpected error; got '%v', want: '%v'", string(gotBytes), string(wantBytes))

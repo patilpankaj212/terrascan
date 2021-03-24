@@ -18,6 +18,7 @@ package commons
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/accurics/terrascan/pkg/downloader"
@@ -32,7 +33,7 @@ var (
 	testModuleReqA = &hclConfigs.ModuleRequest{
 		SourceAddr: testLocalSourceAddr,
 		Parent: &hclConfigs.Config{
-			SourceAddr: "./eks/aws",
+			SourceAddr: filepath.Join("eks", "aws"),
 		},
 	}
 
@@ -60,19 +61,19 @@ func TestProcessLocalSource(t *testing.T) {
 			name: "no remote module",
 			args: args{
 				req:        testModuleReqA,
-				absRootDir: "/home/somedir",
+				absRootDir: filepath.Join("/", "home", "somedir"),
 			},
-			want: "/home/somedir/eks/aws/someModule",
+			want: filepath.Join("/", "home", "somedir", "eks", "aws", "someModule"),
 		},
 		{
 			name: "with remote module",
 			args: args{
 				req: testModuleReqB,
 				remoteModPaths: map[string]string{
-					testRemoteSourceAddr: "/var/temp/testDir",
+					filepath.Join("terraform-aws-modules", "eks", "aws"): filepath.Join("/", "var", "temp", "testDir"),
 				},
 			},
-			want: "/var/temp/testDir/someModule",
+			want: filepath.Join("/", "var", "temp", "testDir", "someModule"),
 		},
 	}
 	for _, tt := range tests {

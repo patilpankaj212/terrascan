@@ -26,6 +26,7 @@ import (
 
 	"github.com/accurics/terrascan/pkg/iac-providers/output"
 	commons_test "github.com/accurics/terrascan/pkg/iac-providers/terraform/commons/test"
+	"github.com/accurics/terrascan/pkg/utils"
 )
 
 func TestLoadIacDir(t *testing.T) {
@@ -124,6 +125,10 @@ func TestLoadIacDir(t *testing.T) {
 
 			// Read the expected value and unmarshal into want
 			contents, _ := ioutil.ReadFile(tt.tfJSONFile)
+			if utils.IsWindowsPlatform() {
+				contents = utils.ReplaceWinNewLineBytes(contents)
+			}
+
 			err := json.Unmarshal(contents, &want)
 			if err != nil {
 				t.Errorf("unexpected error unmarshalling want: %v", err)

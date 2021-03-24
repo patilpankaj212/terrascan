@@ -86,7 +86,7 @@ func ValidateDirectoryExists(path string) {
 func CompareActualWithGolden(session *gexec.Session, goldenFileAbsPath string, isStdOut bool) {
 	sessionBytes, fileBytes := GetByteData(session, goldenFileAbsPath, isStdOut)
 	if utils.IsWindowsPlatform() {
-		fileBytes = utils.ReplaceCarriageReturnBytes(fileBytes)
+		fileBytes = utils.ReplaceWinNewLineBytes(fileBytes)
 	}
 	gomega.Expect(string(sessionBytes)).Should(gomega.Equal(string(fileBytes)))
 }
