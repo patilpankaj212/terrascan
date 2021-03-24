@@ -19,6 +19,7 @@ package commons
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -201,7 +202,7 @@ func processLocalSource(req *hclConfigs.ModuleRequest, remoteModPaths map[string
 
 	pathToModule := req.SourceAddr
 	for p := req.Parent; p != nil; p = p.Parent {
-		pathToModule = filepath.Join(p.SourceAddr, pathToModule)
+		pathToModule = path.Join(p.SourceAddr, pathToModule)
 	}
 
 	// check if pathToModule consists of a remote module downloaded
