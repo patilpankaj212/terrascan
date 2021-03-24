@@ -70,7 +70,7 @@ func TestProcessLocalSource(t *testing.T) {
 			args: args{
 				req: testModuleReqB,
 				remoteModPaths: map[string]string{
-					filepath.Join("terraform-aws-modules", "eks", "aws"): filepath.Join("/", "var", "temp", "testDir"),
+					"terraform-aws-modules/eks/aws": filepath.Join("/", "var", "temp", "testDir"),
 				},
 			},
 			want: filepath.Join("/", "var", "temp", "testDir", "someModule"),
