@@ -22,7 +22,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/accurics/terrascan/pkg/utils"
 	serverUtils "github.com/accurics/terrascan/test/e2e/server"
 	"github.com/accurics/terrascan/test/helper"
 	. "github.com/onsi/ginkgo"
@@ -186,6 +188,10 @@ var _ = Describe("Server", func() {
 // and sets and env variable
 func createAndSetEnvConfigFile(configFileName string) {
 	var policyAbsPath, _ = filepath.Abs(policyRootRelPath)
+
+	if utils.IsWindowsPlatform() {
+		policyAbsPath = strings.ReplaceAll(policyAbsPath, "\\", "\\\\")
+	}
 
 	// contents of the config file
 	configFileContents := fmt.Sprintf(`[policy]
