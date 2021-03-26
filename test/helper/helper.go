@@ -52,22 +52,22 @@ var (
 	scannedAtPattern = regexp.MustCompile(`["]*[sS]canned[ _][aA]t["]*[ \t]*[:=][ \t]*["]*[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{1,9} [+-][0-9]{4} UTC["]*[,]{0,1}`)
 
 	// fileFolderPattern is regex for 'file/folder' attribute in violations output
-	fileFolderPattern = regexp.MustCompile(`["]*[fF]ile[\/_][fF]older["]*[ \t]*[:=][ \t]*["]*(.+)\/(.+)["]*`)
+	fileFolderPattern = regexp.MustCompile(`["]*[fF]ile[\/_][fF]older["]*[ \t]*[:=][ \t]*["]*(.+)[\\\/](.+)["]*`)
 
 	// filePattern is regex for 'file' attribute in violations output
-	filePattern = regexp.MustCompile(`["]*[fF]ile["]*[ \t]*[:=][ \t]*["]*(.+)\/(.+)["]*`)
+	filePattern = regexp.MustCompile(`["]*[fF]ile["]*[ \t]*[:=][ \t]*["]*(.+)[\\\/](.+)["]*`)
 
 	// packagePattern is regex for 'package' attribute in junit-xml output
-	packagePattern = regexp.MustCompile(`package=["]*(.+)\/(.+)["]*`)
+	packagePattern = regexp.MustCompile(`package=["]*(.+)[\\\/](.+)["]*`)
 
 	// classnamePattern is regex for 'package' attribute in junit-xml output
-	classnamePattern = regexp.MustCompile(`classname=["]*(.+)\/(.+)["]*`)
+	classnamePattern = regexp.MustCompile(`classname=["]*(.+)[\\\/](.+)["]*`)
 
 	// versionValuePattern is regex for 'value' attribute in junit-xml output (which is terrascan version)
 	versionValuePattern = regexp.MustCompile(`value="v[1][\.][0-9][\.][0-9]"`)
 
 	// sourceRegexPattern is regex for 'file/folder' attribute in violations output
-	sourceRegexPattern = regexp.MustCompile(`["]*source["]*[ \t]*[:][ \t]*["]*(.+)\/(.+)["]*`)
+	sourceRegexPattern = regexp.MustCompile(`["]*source["]*[ \t]*[:][ \t]*["]*(.+)[\\\/](.+)["]*`)
 )
 
 // ValidateExitCode validates the exit code of a gexec.Session
@@ -103,6 +103,9 @@ func CompareActualWithGoldenConfigOnlyRegex(session *gexec.Session, goldenFileAb
 // ignores specified regex patterns from the actual and golden text
 func CompareActualWithGoldenSummaryRegex(session *gexec.Session, goldenFileAbsPath string, isJunitXML, isStdOut bool) {
 	fileData, err := ioutil.ReadFile(goldenFileAbsPath)
+	if utils.IsWindowsPlatform() {
+		fileData = utils.ReplaceWinNewLineBytes(fileData)
+	}
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	var sessionOutput, fileContents string
 
