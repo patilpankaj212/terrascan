@@ -61,7 +61,12 @@ var _ = Describe("Server", func() {
 	})
 
 	AfterSuite(func() {
-		gexec.Terminate()
+		if utils.IsWindowsPlatform() {
+			gexec.Kill()
+		} else {
+			gexec.Terminate()
+		}
+
 		os.Remove(configFileName)
 	})
 
@@ -172,8 +177,14 @@ var _ = Describe("Server", func() {
 
 					Context("server is stopped", func() {
 						It("should gracefully exit", func() {
-							session.Interrupt()
-							Eventually(session).Should(gexec.Exit(helper.ExitCodeZero))
+							if utils.IsWindowsPlatform() {
+								session.Kill()
+								Eventually(session).Should(gexec.Exit(helper.ExitCodeOne))
+							} else {
+								session.Interrupt()
+								Eventually(session).Should(gexec.Exit(helper.ExitCodeZero))
+							}
+
 							_, err := serverUtils.MakeHTTPRequest(http.MethodGet, healthCheckURL)
 							Expect(err).To(HaveOccurred())
 						})
