@@ -21,9 +21,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
-
-	"github.com/mitchellh/go-homedir"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,10 +40,10 @@ type KubernetesClient struct {
 }
 
 // NewKubernetesClient creates a new Kubernetes client
-func NewKubernetesClient() (*KubernetesClient, error) {
+func NewKubernetesClient(kubeconfig string) (*KubernetesClient, error) {
 	kubernetesClient := new(KubernetesClient)
 	var err error
-	kubernetesClient.client, err = kubernetesClient.getK8sClient()
+	kubernetesClient.client, err = kubernetesClient.getK8sClient(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
@@ -54,15 +51,8 @@ func NewKubernetesClient() (*KubernetesClient, error) {
 }
 
 // getK8sClient creates a kubernetes clientset with default config path
-func (k *KubernetesClient) getK8sClient() (*kubernetes.Clientset, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return nil, fmt.Errorf("home directory not found, error: %s", err.Error())
-	}
-
-	configPath := filepath.Join(home, ".kube", "config")
-
-	config, err := clientcmd.BuildConfigFromFlags("", configPath)
+func (k *KubernetesClient) getK8sClient(kubeconfig string) (*kubernetes.Clientset, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create k8s config, error: %s", err.Error())
 	}

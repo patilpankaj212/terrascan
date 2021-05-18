@@ -51,6 +51,7 @@ var (
 	webhookYamlRelPath  = filepath.Join("test-data", "yamls", "webhook.yaml")
 	podYamlRelPath      = filepath.Join("test-data", "yamls", "pod.yaml")
 	serviceYamlPath     = filepath.Join("test-data", "yamls", "service.yaml")
+	kubeConfig = filepath.Join("config_data", "kubeconfig.yaml")
 )
 
 var _ = Describe("ValidatingWebhook", func() {
@@ -58,21 +59,21 @@ var _ = Describe("ValidatingWebhook", func() {
 	BeforeSuite(func() {
 
 		// delete the default cluster if it is already running
-		err := validatingwebhook.DeleteDefaultKindCluster()
+		err := validatingwebhook.DeleteDefaultKindCluster(kubeConfig)
 		if err != nil {
 			message := fmt.Sprintf("error while deleting cluster. err: %v", err)
 			Fail(message)
 		}
 
 		// create a new cluster
-		err = validatingwebhook.CreateDefaultKindCluster()
+		err = validatingwebhook.CreateDefaultKindCluster(kubeConfig)
 		if err != nil {
 			message := fmt.Sprintf("error while creating cluster. err: %v", err)
 			Fail(message)
 		}
 
 		// get k8s client
-		kubeClient, err = validatingwebhook.NewKubernetesClient()
+		kubeClient, err = validatingwebhook.NewKubernetesClient(kubeConfig)
 		if err != nil {
 			errMessage := fmt.Sprintf("failed to connected to default k8s cluster, error: %s", err.Error())
 			Fail(errMessage)
@@ -101,7 +102,7 @@ var _ = Describe("ValidatingWebhook", func() {
 		}
 
 		// delete the cluster
-		err := validatingwebhook.DeleteDefaultKindCluster()
+		err := validatingwebhook.DeleteDefaultKindCluster(kubeConfig)
 		if err != nil {
 			message := fmt.Sprintf("error while deleting cluster. err: %v", err)
 			Fail(message)
