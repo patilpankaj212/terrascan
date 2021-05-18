@@ -51,7 +51,7 @@ var (
 	webhookYamlRelPath  = filepath.Join("test-data", "yamls", "webhook.yaml")
 	podYamlRelPath      = filepath.Join("test-data", "yamls", "pod.yaml")
 	serviceYamlPath     = filepath.Join("test-data", "yamls", "service.yaml")
-	kubeConfig = filepath.Join("config_data", "kubeconfig.yaml")
+	kubeConfig          = filepath.Join("config_data", "kubeconfig.yaml")
 )
 
 var _ = Describe("ValidatingWebhook", func() {
