@@ -4,62 +4,56 @@ import (
 	"github.com/accurics/terrascan/pkg/policy"
 )
 
+// RegoMetadataPreLoadFilter is a pre load filter
 type RegoMetadataPreLoadFilter struct {
 	scanRules   []string
 	skipRules   []string
 	categories  []string
-	policyTypes []string
 	severity    string
+	filterSpecs []policy.FilterSpecification
 }
 
-func NewRegoMetadataPreLoadFilter(scanRules, skipRules, categories, policyTypes []string, severity string) *RegoMetadataPreLoadFilter {
+// NewRegoMetadataPreLoadFilter is a constructor func for RegoMetadataPreLoadFilter
+func NewRegoMetadataPreLoadFilter(scanRules, skipRules, categories []string, severity string) *RegoMetadataPreLoadFilter {
 	return &RegoMetadataPreLoadFilter{
-		scanRules:   scanRules,
-		skipRules:   skipRules,
-		categories:  categories,
-		policyTypes: policyTypes,
-		severity:    severity,
+		scanRules:  scanRules,
+		skipRules:  skipRules,
+		categories: categories,
+		severity:   severity,
+		// add applicable filter specs to the list
+		filterSpecs: []policy.FilterSpecification{
+			RerefenceIDsFilterSpecification{scanRules},
+			CategoryFilterSpecification{categories: categories},
+			SeverityFilterSpecification{severity: severity},
+		},
 	}
 }
 
+// IsFiltered checks whether a RegoMetada should be filtered or not
 func (r RegoMetadataPreLoadFilter) IsFiltered(regoMetadata *policy.RegoMetadata) bool {
-	if len(r.skipRules) > 0 {
-		refIDsSpec := RerefenceIDsFilterSpecification{r.skipRules}
-		return refIDsSpec.IsSatisfied(regoMetadata)
+	// if length of skip rules is RegoMetada is not filtered
+	if len(r.skipRules) < 1 {
+		return false
 	}
-
-	return false
+	refIDsSpec := RerefenceIDsFilterSpecification{r.skipRules}
+	return refIDsSpec.IsSatisfied(regoMetadata)
 }
 
+// IsAllowed checks whether a RegoMetada should be allowed or not
 func (r RegoMetadataPreLoadFilter) IsAllowed(regoMetadata *policy.RegoMetadata) bool {
-	isSeverityAllowed, isCategoryAllowed, isScanRuleAllowed, isPolicyTypeAllowed := true, true, true, true
-
-	if len(r.severity) > 0 {
-		sevSpec := SeverityFilterSpecification{r.severity}
-		isSeverityAllowed = sevSpec.IsSatisfied(regoMetadata)
-	}
-
-	if len(r.categories) > 0 {
-		catSpec := CategoryFilterSpecification{r.categories}
-		isCategoryAllowed = catSpec.IsSatisfied(regoMetadata)
-	}
-
-	if len(r.scanRules) > 0 {
-		refIDsSpec := RerefenceIDsFilterSpecification{r.scanRules}
-		isScanRuleAllowed = refIDsSpec.IsSatisfied(regoMetadata)
-	}
-
-	if len(r.policyTypes) > 0 {
-		policyTypeSpec := PolicyTypeFilterSpecification{r.policyTypes}
-		isPolicyTypeAllowed = policyTypeSpec.IsSatisfied(regoMetadata)
-	}
-
-	return isSeverityAllowed && isCategoryAllowed && isScanRuleAllowed && isPolicyTypeAllowed
+	andSpec := AndFilterSpecification{r.filterSpecs}
+	return andSpec.IsSatisfied(regoMetadata)
 }
 
+// RegoDataFilter is a pre scan filter
 type RegoDataFilter struct{}
 
+// Filter func filters based on resource type
 func (r RegoDataFilter) Filter(rmap map[string]*policy.RegoData, input policy.EngineInput) map[string]*policy.RegoData {
+	// if resource config is empty, return original map
+	if len(*input.InputData) < 0 {
+		return rmap
+	}
 	tempMap := make(map[string]*policy.RegoData)
 	for resType := range *input.InputData {
 		for k := range rmap {

@@ -148,11 +148,11 @@ func (e *Executor) Init() error {
 			return err
 		}
 
-		// create a new RegoMetadata filter
-		filter := filters.NewRegoMetadataPreLoadFilter(e.scanRules, e.skipRules, e.categories, e.policyTypes, e.severity)
+		// create a new RegoMetadata pre load filter
+		preloadFilter := filters.NewRegoMetadataPreLoadFilter(e.scanRules, e.skipRules, e.categories, e.severity)
 
 		// initialize the engine
-		if err := engine.Init(policyPath, filter); err != nil {
+		if err := engine.Init(policyPath, preloadFilter); err != nil {
 			zap.S().Errorf("%s", err)
 			return err
 		}
@@ -268,8 +268,8 @@ func (e *Executor) findViolations(results *Output) error {
 
 	for _, engine := range e.policyEngines {
 		go func(eng policy.Engine) {
-			filter := filters.RegoDataFilter{}
-			output, err := eng.Evaluate(policy.EngineInput{InputData: &results.ResourceConfig}, filter)
+			preScanFilter := filters.RegoDataFilter{}
+			output, err := eng.Evaluate(policy.EngineInput{InputData: &results.ResourceConfig}, preScanFilter)
 			evalResultChan <- engineEvalResult{err, output}
 		}(engine)
 	}

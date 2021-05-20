@@ -98,7 +98,7 @@ func (e *Engine) loadRawRegoFilesIntoMap(currentDir string, regoDataList []*poli
 }
 
 // LoadRegoFiles Loads all related rego files from the given policy path into memory
-func (e *Engine) LoadRegoFiles(policyPath string) error {
+func (e *Engine) LoadRegoFiles(policyPath string, filter policy.PreLoadFilter) error {
 	// Walk the file path and find all directories
 	dirList, err := utils.FindAllDirectories(policyPath)
 	if err != nil {
@@ -145,11 +145,13 @@ func (e *Engine) LoadRegoFiles(policyPath string) error {
 				continue
 			}
 
-			if !e.filter.IsAllowed(regoMetadata) {
+			// check if the rego metadata is allowed
+			if !filter.IsAllowed(regoMetadata) {
 				continue
 			}
 
-			if e.filter.IsFiltered(regoMetadata) {
+			// check if the rego metadata should be filtered
+			if filter.IsFiltered(regoMetadata) {
 				continue
 			}
 
@@ -253,18 +255,10 @@ func (e *Engine) CompileRegoFiles() error {
 func (e *Engine) Init(policyPath string, filter policy.PreLoadFilter) error {
 	e.context = context.Background()
 
-	e.filter = filter
-
-	if err := e.LoadRegoFiles(policyPath); err != nil {
+	if err := e.LoadRegoFiles(policyPath, filter); err != nil {
 		zap.S().Error("error loading rego files", zap.String("policy path", policyPath), zap.Error(err))
 		return ErrInitFailed
 	}
-
-	// before compiling the rego files, filter the rules based on scan and skip rules, and severity level supplied
-	// e.FilterRules(policyPath, scanRules, skipRules, categories, severity)
-
-	// update the rule count
-	// e.stats.ruleCount = len(e.regoDataMap)
 
 	err := e.CompileRegoFiles()
 	if err != nil {
@@ -360,7 +354,9 @@ func (e *Engine) Evaluate(engineInput policy.EngineInput, filter policy.PreScanF
 		// Execute the prepared query.
 		rs, err := e.regoDataMap[k].PreparedQuery.Eval(e.context, rego.EvalInput(engineInput.InputData))
 		if err != nil {
-			zap.S().Debug("failed to run prepared query", zap.Error(err), zap.String("rule", "'"+k+"'"), zap.String("file", e.regoDataMap[k].Metadata.File))
+			// since the eval failed with the policy type, we should decrement the total count by 1
+			e.stats.ruleCount--
+			zap.S().Warn("failed to run prepared query", zap.Error(err), zap.String("rule", "'"+k+"'"), zap.String("file", e.regoDataMap[k].Metadata.File))
 			continue
 		}
 
