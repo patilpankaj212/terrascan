@@ -44,6 +44,7 @@ type Executor struct {
 	policyEngines []policy.Engine
 	notifiers     []notifications.Notifier
 	categories    []string
+	policyTypes   []string
 	severity      string
 	nonRecursive  bool
 }
@@ -149,7 +150,7 @@ func (e *Executor) Init() error {
 		}
 
 		// create a new RegoMetadata pre load filter
-		preloadFilter := filters.NewRegoMetadataPreLoadFilter(e.scanRules, e.skipRules, e.categories, e.severity)
+		preloadFilter := filters.NewRegoMetadataPreLoadFilter(e.scanRules, e.skipRules, e.categories, e.policyTypes, e.severity)
 
 		// initialize the engine
 		if err := engine.Init(policyPath, preloadFilter); err != nil {
