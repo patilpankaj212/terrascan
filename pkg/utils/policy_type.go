@@ -9,6 +9,10 @@ func CheckPolicyType(rulePolicyType string, desiredPolicyTypes []string) bool {
 		normDesiredPolicyTypes[desiredPolicyType] = true
 	}
 
+	if _, ok := normDesiredPolicyTypes["ALL"]; ok {
+		return ok
+	}
+
 	_, ok := normDesiredPolicyTypes[normRulePolicyType]
 	return ok
 }

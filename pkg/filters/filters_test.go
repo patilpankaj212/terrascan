@@ -59,7 +59,7 @@ func TestRegoMetadataPreLoadFilterIsFiltered(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRegoMetadataPreLoadFilter(nil, tt.fields.skipRules, nil, "")
+			r := NewRegoMetadataPreLoadFilter(nil, tt.fields.skipRules, nil, nil, "")
 			if got := r.IsFiltered(tt.args.regoMetadata); got != tt.want {
 				t.Errorf("RegoMetadataPreLoadFilter.IsFiltered() = %v, want %v", got, tt.want)
 			}
@@ -72,9 +72,10 @@ func TestRegoMetadataPreLoadFilterIsAllowed(t *testing.T) {
 	testCategory := "Category.1"
 
 	type fields struct {
-		scanRules  []string
-		categories []string
-		severity   string
+		scanRules   []string
+		categories  []string
+		policyTypes []string
+		severity    string
 	}
 	type args struct {
 		regoMetadata *policy.RegoMetadata
@@ -168,7 +169,7 @@ func TestRegoMetadataPreLoadFilterIsAllowed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRegoMetadataPreLoadFilter(tt.fields.scanRules, nil, tt.fields.categories, tt.fields.severity)
+			r := NewRegoMetadataPreLoadFilter(tt.fields.scanRules, nil, tt.fields.categories, tt.fields.policyTypes, tt.fields.severity)
 			if got := r.IsAllowed(tt.args.regoMetadata); got != tt.want {
 				t.Errorf("RegoMetadataPreLoadFilter.IsAllowed() = %v, want %v", got, tt.want)
 			}
