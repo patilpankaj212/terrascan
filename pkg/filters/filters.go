@@ -5,18 +5,20 @@ import (
 )
 
 type RegoMetadataPreLoadFilter struct {
-	scanRules  []string
-	skipRules  []string
-	categories []string
-	severity   string
+	scanRules   []string
+	skipRules   []string
+	categories  []string
+	policyTypes []string
+	severity    string
 }
 
-func NewRegoMetadataPreLoadFilter(scanRules, skipRules, categories []string, severity string) *RegoMetadataPreLoadFilter {
+func NewRegoMetadataPreLoadFilter(scanRules, skipRules, categories, policyTypes []string, severity string) *RegoMetadataPreLoadFilter {
 	return &RegoMetadataPreLoadFilter{
-		scanRules:  scanRules,
-		skipRules:  skipRules,
-		categories: categories,
-		severity:   severity,
+		scanRules:   scanRules,
+		skipRules:   skipRules,
+		categories:  categories,
+		policyTypes: policyTypes,
+		severity:    severity,
 	}
 }
 
@@ -30,7 +32,7 @@ func (r RegoMetadataPreLoadFilter) IsFiltered(regoMetadata *policy.RegoMetadata)
 }
 
 func (r RegoMetadataPreLoadFilter) IsAllowed(regoMetadata *policy.RegoMetadata) bool {
-	isSeverityAllowed, isCategoryAllowed, isScanRuleAllowed := true, true, true
+	isSeverityAllowed, isCategoryAllowed, isScanRuleAllowed, isPolicyTypeAllowed := true, true, true, true
 
 	if len(r.severity) > 0 {
 		sevSpec := SeverityFilterSpecification{r.severity}
@@ -47,7 +49,12 @@ func (r RegoMetadataPreLoadFilter) IsAllowed(regoMetadata *policy.RegoMetadata) 
 		isScanRuleAllowed = refIDsSpec.IsSatisfied(regoMetadata)
 	}
 
-	return isSeverityAllowed && isCategoryAllowed && isScanRuleAllowed
+	if len(r.policyTypes) > 0 {
+		policyTypeSpec := PolicyTypeFilterSpecification{r.policyTypes}
+		isPolicyTypeAllowed = policyTypeSpec.IsSatisfied(regoMetadata)
+	}
+
+	return isSeverityAllowed && isCategoryAllowed && isScanRuleAllowed && isPolicyTypeAllowed
 }
 
 type RegoDataFilter struct{}

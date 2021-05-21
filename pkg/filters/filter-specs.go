@@ -6,11 +6,11 @@ import (
 )
 
 type PolicyTypeFilterSpecification struct {
-	policyType string
+	policyTypes []string
 }
 
 func (p PolicyTypeFilterSpecification) IsSatisfied(r *policy.RegoMetadata) bool {
-	return p.policyType == r.PolicyType
+	return utils.CheckPolicyType(r.PolicyType, p.policyTypes)
 }
 
 type ResourceTypeFilterSpecification struct {
