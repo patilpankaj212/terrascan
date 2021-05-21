@@ -13,7 +13,7 @@ type PolicyTypeFilterSpecification struct {
 // IsSatisfied implementation for policy type based Filter spec
 func (p PolicyTypeFilterSpecification) IsSatisfied(r *policy.RegoMetadata) bool {
 	// if resource type is not present for metadata, return true
-	if len(r.PolicyType) < 1 {
+	if len(r.PolicyType) < 1 || len(p.policyTypes) < 1 {
 		return true
 	}
 	return utils.CheckPolicyType(r.PolicyType, p.policyTypes)
