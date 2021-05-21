@@ -35,7 +35,6 @@ type Executor struct {
 	filePath      string
 	dirPath       string
 	policyPath    []string
-	cloudType     []string
 	iacType       string
 	iacVersion    string
 	scanRules     []string
@@ -50,12 +49,12 @@ type Executor struct {
 }
 
 // NewExecutor creates a runtime object
-func NewExecutor(iacType, iacVersion string, cloudType []string, filePath, dirPath string, policyPath, scanRules, skipRules, categories []string, severity string, nonRecursive bool) (e *Executor, err error) {
+func NewExecutor(iacType, iacVersion string, policyTypes []string, filePath, dirPath string, policyPath, scanRules, skipRules, categories []string, severity string, nonRecursive bool) (e *Executor, err error) {
 	e = &Executor{
 		filePath:     filePath,
 		dirPath:      dirPath,
 		policyPath:   policyPath,
-		cloudType:    cloudType,
+		policyTypes:  policyTypes,
 		iacType:      iacType,
 		iacVersion:   iacVersion,
 		iacProviders: make([]iacProvider.IacProvider, 0),
@@ -82,6 +81,10 @@ func NewExecutor(iacType, iacVersion string, cloudType []string, filePath, dirPa
 
 	if len(categories) > 0 {
 		e.categories = categories
+	}
+
+	if len(policyTypes) > 0 {
+		e.policyTypes = policyTypes
 	}
 
 	// initialize executor

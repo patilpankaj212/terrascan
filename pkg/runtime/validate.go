@@ -114,7 +114,7 @@ func (e *Executor) ValidateInputs() error {
 		}
 	}
 
-	// check if cloud type is supported
+	// check if cloud type(policy type) is supported
 	for _, ct := range e.policyTypes {
 		if !policy.IsCloudProviderSupported(ct) {
 			zap.S().Errorf("cloud type '%s' not supported", ct)
