@@ -55,7 +55,7 @@ func NewEngine() (*Engine, error) {
 }
 
 // LoadRegoMetadata Loads rego metadata from a given file
-func (e *Engine) LoadRegoMetadata(metaFilename string) (*RegoMetadata, error) {
+func (e *Engine) LoadRegoMetadata(metaFilename string) (*policy.RegoMetadata, error) {
 	// Load metadata file if it exists
 	metadata, err := ioutil.ReadFile(metaFilename)
 	if err != nil {
@@ -66,7 +66,7 @@ func (e *Engine) LoadRegoMetadata(metaFilename string) (*RegoMetadata, error) {
 	}
 
 	// Read metadata into struct
-	regoMetadata := RegoMetadata{}
+	regoMetadata := policy.RegoMetadata{}
 	if err = json.Unmarshal(metadata, &regoMetadata); err != nil {
 		zap.S().Error("failed to unmarshal rego metadata", zap.String("file", metaFilename), zap.Error(err))
 		return nil, err
@@ -75,7 +75,7 @@ func (e *Engine) LoadRegoMetadata(metaFilename string) (*RegoMetadata, error) {
 }
 
 // loadRawRegoFilesIntoMap imports raw rego files into a map
-func (e *Engine) loadRawRegoFilesIntoMap(currentDir string, regoDataList []*RegoData, regoFileMap *map[string][]byte) error {
+func (e *Engine) loadRawRegoFilesIntoMap(currentDir string, regoDataList []*policy.RegoData, regoFileMap *map[string][]byte) error {
 	for i := range regoDataList {
 		regoPath := filepath.Join(currentDir, regoDataList[i].Metadata.File)
 		rawRegoData, err := ioutil.ReadFile(regoPath)
@@ -110,7 +110,7 @@ func (e *Engine) LoadRegoFiles(policyPath string) error {
 	}
 
 	e.regoFileMap = make(map[string][]byte)
-	e.regoDataMap = make(map[string]*RegoData)
+	e.regoDataMap = make(map[string]*policy.RegoData)
 
 	// Load rego data files from each dir
 	// First, we read the metadata file, which contains info about the associated rego rule. The .rego file data is
@@ -134,14 +134,22 @@ func (e *Engine) LoadRegoFiles(policyPath string) error {
 			continue
 		}
 
-		var regoDataList []*RegoData
+		var regoDataList []*policy.RegoData
 		for j := range metadataFiles {
 			filePath := filepath.Join(dirList[i], *metadataFiles[j])
 
-			var regoMetadata *RegoMetadata
+			var regoMetadata *policy.RegoMetadata
 			regoMetadata, err = e.LoadRegoMetadata(filePath)
 			if err != nil {
 				zap.S().Error("error loading rego metadata", zap.String("file", filePath), zap.Error(err))
+				continue
+			}
+
+			if !e.filter.IsAllowed(regoMetadata) {
+				continue
+			}
+
+			if e.filter.IsFiltered(regoMetadata) {
 				continue
 			}
 
@@ -160,7 +168,7 @@ func (e *Engine) LoadRegoFiles(policyPath string) error {
 				regoMetadata.TemplateArgs["name"] = regoMetadata.Name
 			}
 
-			regoData := RegoData{
+			regoData := policy.RegoData{
 				Metadata: *regoMetadata,
 			}
 
@@ -242,8 +250,10 @@ func (e *Engine) CompileRegoFiles() error {
 
 // Init initializes the Opa engine
 // Handles loading all rules, filtering, compiling, and preparing for evaluation
-func (e *Engine) Init(policyPath string, scanRules, skipRules, categories []string, severity string) error {
+func (e *Engine) Init(policyPath string, filter policy.PreLoadFilter) error {
 	e.context = context.Background()
+
+	e.filter = filter
 
 	if err := e.LoadRegoFiles(policyPath); err != nil {
 		zap.S().Error("error loading rego files", zap.String("policy path", policyPath), zap.Error(err))
@@ -251,10 +261,10 @@ func (e *Engine) Init(policyPath string, scanRules, skipRules, categories []stri
 	}
 
 	// before compiling the rego files, filter the rules based on scan and skip rules, and severity level supplied
-	e.FilterRules(policyPath, scanRules, skipRules, categories, severity)
+	// e.FilterRules(policyPath, scanRules, skipRules, categories, severity)
 
 	// update the rule count
-	e.stats.ruleCount = len(e.regoDataMap)
+	// e.stats.ruleCount = len(e.regoDataMap)
 
 	err := e.CompileRegoFiles()
 	if err != nil {
@@ -284,7 +294,7 @@ func (e *Engine) Release() error {
 }
 
 // reportViolation Add a violation for a given resource
-func (e *Engine) reportViolation(regoData *RegoData, resource *output.ResourceConfig, isSkipped bool, skipComment string) {
+func (e *Engine) reportViolation(regoData *policy.RegoData, resource *output.ResourceConfig, isSkipped bool, skipComment string) {
 	violation := results.Violation{
 		RuleName:     regoData.Metadata.Name,
 		Description:  regoData.Metadata.Description,
@@ -323,7 +333,7 @@ func (e *Engine) reportViolation(regoData *RegoData, resource *output.ResourceCo
 }
 
 // reportPassed Adds a passed rule which wasn't violated by all the resources
-func (e *Engine) reportPassed(regoData *RegoData) {
+func (e *Engine) reportPassed(regoData *policy.RegoData) {
 	passedRule := results.PassedRule{
 		RuleName:    regoData.Metadata.Name,
 		Description: regoData.Metadata.Description,
@@ -336,9 +346,14 @@ func (e *Engine) reportPassed(regoData *RegoData) {
 }
 
 // Evaluate Executes compiled OPA queries against the input JSON data
-func (e *Engine) Evaluate(engineInput policy.EngineInput) (policy.EngineOutput, error) {
+func (e *Engine) Evaluate(engineInput policy.EngineInput, filter policy.PreScanFilter) (policy.EngineOutput, error) {
 	// Keep track of how long it takes to evaluate the policies
 	start := time.Now()
+
+	e.regoDataMap = filter.Filter(e.regoDataMap, engineInput)
+
+	// update the rule count
+	e.stats.ruleCount = len(e.regoDataMap)
 
 	// Evaluate the policy against each resource type
 	for k := range e.regoDataMap {
@@ -468,7 +483,7 @@ func (e *Engine) FilterRules(policyPath string, scanRules, skipRules, categories
 func (e *Engine) filterScanRules(policyPath string, scanRules []string) {
 
 	// temporary map to store data from original rego data map
-	tempMap := make(map[string]*RegoData)
+	tempMap := make(map[string]*policy.RegoData)
 	for _, ruleID := range scanRules {
 		regoData, ok := e.regoDataMap[ruleID]
 		if ok {
@@ -502,7 +517,7 @@ func (e *Engine) filterSkipRules(policyPath string, skipRules []string) {
 func (e *Engine) filterByCategories(policyPath string, categories []string) {
 
 	// temporary map to store data from original rego data map
-	tempMap := make(map[string]*RegoData)
+	tempMap := make(map[string]*policy.RegoData)
 	for ruleID, regoData := range e.regoDataMap {
 
 		if utils.CheckCategory(regoData.Metadata.Category, categories) {
@@ -519,7 +534,7 @@ func (e *Engine) filterByCategories(policyPath string, categories []string) {
 
 func (e *Engine) filterBySeverity(policyPath string, severity string) {
 	// temporary map to store data from original rego data map
-	tempMap := make(map[string]*RegoData)
+	tempMap := make(map[string]*policy.RegoData)
 	for ruleID, regoData := range e.regoDataMap {
 
 		if utils.CheckSeverity(regoData.Metadata.Severity, severity) {

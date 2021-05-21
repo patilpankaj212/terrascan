@@ -21,6 +21,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/accurics/terrascan/pkg/filters"
 	iacProvider "github.com/accurics/terrascan/pkg/iac-providers"
 	"github.com/accurics/terrascan/pkg/iac-providers/output"
 	"github.com/accurics/terrascan/pkg/notifications"
@@ -147,8 +148,11 @@ func (e *Executor) Init() error {
 			return err
 		}
 
+		// create a new RegoMetadata filter
+		filter := filters.NewRegoMetadataPreLoadFilter(e.scanRules, e.skipRules, e.categories, e.severity)
+
 		// initialize the engine
-		if err := engine.Init(policyPath, e.scanRules, e.skipRules, e.categories, e.severity); err != nil {
+		if err := engine.Init(policyPath, filter); err != nil {
 			zap.S().Errorf("%s", err)
 			return err
 		}
@@ -264,7 +268,8 @@ func (e *Executor) findViolations(results *Output) error {
 
 	for _, engine := range e.policyEngines {
 		go func(eng policy.Engine) {
-			output, err := eng.Evaluate(policy.EngineInput{InputData: &results.ResourceConfig})
+			filter := filters.RegoDataFilter{}
+			output, err := eng.Evaluate(policy.EngineInput{InputData: &results.ResourceConfig}, filter)
 			evalResultChan <- engineEvalResult{err, output}
 		}(engine)
 	}
