@@ -34,6 +34,7 @@ import (
 	"github.com/accurics/terrascan/pkg/policy"
 	"github.com/accurics/terrascan/pkg/results"
 	"github.com/accurics/terrascan/pkg/utils"
+	"github.com/accurics/terrascan/pkg/utils/linenumber"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"go.uber.org/zap"
@@ -387,13 +388,14 @@ func (e *Engine) Evaluate(engineInput policy.EngineInput, filter policy.PreScanF
 
 		// Report a violation for each resource returned by the policy evaluation
 		for i := range resourceViolations {
-			var resourceID string
+			var resourceID, traversalPath string
 
 			// The return values come in two categories--either a map[string]interface{} type, where the "Id" key
 			// contains the resource ID, or a string type which is the resource ID. This resource ID is where a
 			// violation was found
 			switch res := resourceViolations[i].(type) {
 			case map[string]interface{}:
+				fmt.Println("map type for rule ", e.regoDataMap[k].Metadata.ReferenceID)
 				_, ok := res["Id"]
 				if !ok {
 					zap.S().Warn("no Id key found in resource map", zap.Any("resource", res))
@@ -406,6 +408,23 @@ func (e *Engine) Evaluate(engineInput policy.EngineInput, filter policy.PreScanF
 					continue
 				}
 				resourceID = res["Id"].(string)
+
+				if e.regoDataMap[k].Metadata.PolicyType == "k8s" {
+					_, ok = res["Traverse"]
+					if !ok {
+						fmt.Println("Traverse information not present for violation")
+						continue
+					}
+
+					_, ok = res["Traverse"].(string)
+					if !ok {
+						fmt.Println("Traverse value should be a string")
+						continue
+					}
+
+					traversalPath = res["Traverse"].(string)
+					fmt.Println(traversalPath)
+				}
 			case string:
 				resourceID = res
 			default:
@@ -426,6 +445,16 @@ func (e *Engine) Evaluate(engineInput policy.EngineInput, filter policy.PreScanF
 			}
 
 			for _, resource := range resources {
+				if len(traversalPath) > 0 {
+					if resource.Data != nil {
+						klnf, err := linenumber.NewK8sLineNumberFinder(traversalPath, resource.Data, resource.Line)
+						if err != nil {
+							fmt.Println(err)
+						} else {
+							resource.Line = klnf.FindLineNumber()
+						}
+					}
+				}
 				// add to skipped violations if rule is skipped for resource
 				if len(resource.SkipRules) > 0 {
 					found := false
@@ -439,15 +468,15 @@ func (e *Engine) Evaluate(engineInput policy.EngineInput, filter policy.PreScanF
 					}
 					if found {
 						// report skipped
-						e.reportViolation(e.regoDataMap[k], resource, true, skipComment)
+						e.reportViolation(e.regoDataMap[k], &resource, true, skipComment)
 						zap.S().Debugf("rule: %s skipped for resource: %s", k, resource.Name)
 					} else {
 						// Report the violation
-						e.reportViolation(e.regoDataMap[k], resource, false, "")
+						e.reportViolation(e.regoDataMap[k], &resource, false, "")
 					}
 				} else {
 					// Report the violation
-					e.reportViolation(e.regoDataMap[k], resource, false, "")
+					e.reportViolation(e.regoDataMap[k], &resource, false, "")
 				}
 			}
 

@@ -1,21 +1,28 @@
 package accurics
 
-{{.prefix}}{{.name}}{{.suffix}}[pod.id] {
+{{.prefix}}{{.name}}{{.suffix}}[retVal] {
+    some i;
     pod := input.kubernetes_pod[_]
-    container := pod.config.spec.containers[_]
+    container := pod.config.spec.containers[i]
     not container.securityContext
+    traverse := sprintf("spec.containers[%d].securityContext",[i])
+    retVal := {"Id": pod.id, "Traverse": traverse}
 }
 
-{{.prefix}}{{.name}}{{.suffix}}[pod.id] {
+{{.prefix}}{{.name}}{{.suffix}}[retVal] {
+    some i;
     pod := input.kubernetes_pod[_]
-    initcontainer := pod.config.spec.initContainers[_]
+    initcontainer := pod.config.spec.initContainers[i]
     not initcontainer.securityContext
+    traverse := sprintf("spec.initContainers[%d].securityContext",[i])
+    retVal := {"Id": pod.id, "Traverse": traverse}
 }
 
-{{.prefix}}{{.name}}{{.suffix}}[pod.id] {
-    pod := input.kubernetes_pod[_]
-    not pod.config.spec.securityContext
-}
+# {{.prefix}}{{.name}}{{.suffix}}[retVal] {
+#     pod := input.kubernetes_pod[_]
+#     not pod.config.spec.securityContext
+#     retVal := {"Id": pod.id, "Traverse": "spec.securityContext"}
+# }
 
 {{.prefix}}{{.name}}{{.suffix}}[pod.id] {
     pod := input.kubernetes_cron_job[_]

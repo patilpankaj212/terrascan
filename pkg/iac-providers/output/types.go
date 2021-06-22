@@ -32,6 +32,7 @@ type ResourceConfig struct {
 	Line       int         `json:"line"`
 	Type       string      `json:"type"`
 	Config     interface{} `json:"config"`
+	Data       []byte      `json:"-"`
 	// SkipRules will hold the rules to be skipped for the resource.
 	// Each iac provider should append the rules to be skipped for a resource,
 	// while extracting resource from the iac files
@@ -50,7 +51,7 @@ type SkipRule struct {
 type AllResourceConfigs map[string][]ResourceConfig
 
 // FindAllResourcesByID Finds all resources within the resource map
-func (a AllResourceConfigs) FindAllResourcesByID(resourceID string) ([]*ResourceConfig, error) {
+func (a AllResourceConfigs) FindAllResourcesByID(resourceID string) ([]ResourceConfig, error) {
 	if len(a) == 0 {
 		return nil, fmt.Errorf("AllResourceConfigs is nil or doesn't contain any resource type")
 	}
@@ -61,11 +62,11 @@ func (a AllResourceConfigs) FindAllResourcesByID(resourceID string) ([]*Resource
 
 	resourceType := resTypeName[len(resTypeName)-2]
 
-	resources := make([]*ResourceConfig, 0)
+	resources := make([]ResourceConfig, 0)
 	resourceTypeList := a[resourceType]
 	for i := range resourceTypeList {
 		if resourceTypeList[i].ID == resourceID {
-			resources = append(resources, &resourceTypeList[i])
+			resources = append(resources, resourceTypeList[i])
 		}
 	}
 
